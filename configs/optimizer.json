@@ -1,0 +1,29 @@
+{
+  "name": "optimizer",
+  "description": "Optimize system prompts for quality and token efficiency.",
+  "mode": "loop",
+
+  "worker": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-20250514",
+    "api_key": "$ANTHROPIC_API_KEY",
+    "prompt_file": "prompts/protocol_mutator.md",
+    "max_tokens": 512
+  },
+
+  "board": {
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5-20251001",
+    "api_key": "$ANTHROPIC_API_KEY",
+    "prompt_file": "prompts/judge.md",
+    "max_score": 30
+  },
+
+  "gate": {},
+
+  "loop": {
+    "max_experiments": 50,
+    "max_streak": 20,
+    "skip_board_on_near_duplicate": false
+  }
+}

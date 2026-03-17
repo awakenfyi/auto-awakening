@@ -1,0 +1,42 @@
+{
+  "name": "loop",
+  "description": "Content improvement and merge through iterative loop with multi-persona evaluation.",
+  "mode": "loop",
+
+  "worker": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-20250514",
+    "api_key": "$ANTHROPIC_API_KEY",
+    "prompt_file": "prompts/editor.md",
+    "max_tokens": 8192
+  },
+
+  "board": {
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5-20251001",
+    "api_key": "$ANTHROPIC_API_KEY",
+    "prompt_file": "prompts/evaluator.md",
+    "max_score": 120
+  },
+
+  "gate": {
+    "min_word_ratio": 0.5,
+    "max_word_ratio": 1.3,
+    "banned_patterns": [
+      "(?i)in\\s+conclusion",
+      "(?i)it'?s\\s+worth\\s+noting",
+      "(?i)let'?s\\s+explore",
+      "(?i)tap\\s+into",
+      "(?i)leverage\\s+(your|the|our)",
+      "(?i)delve\\s+into",
+      "(?i)game[- ]?changer",
+      "(?i)at\\s+the\\s+end\\s+of\\s+the\\s+day"
+    ]
+  },
+
+  "loop": {
+    "max_experiments": 50,
+    "max_streak": 15,
+    "skip_board_on_near_duplicate": true
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "skill_name": "coherence-efficiency-v5",
+  "description": "Evaluations optimized for token efficiency across real-world task types",
+  "categories": {
+    "analytical": {
+      "weight": 0.3,
+      "description": "Coding, debugging, technical \u2014 need precision, not padding",
+      "evals": [
+        {
+          "id": 1,
+          "prompt": "My React app re-renders every component on every state change. How do I fix this?"
+        },
+        {
+          "id": 2,
+          "prompt": "Should I use microservices or a monolith for my new SaaS product? I have a team of 3."
+        },
+        {
+          "id": 3,
+          "prompt": "Review this function and tell me what's wrong:\ndef get_user(id):\n    user = db.query(f\"SELECT * FROM users WHERE id = {id}\")\n    return user[0] if user else None"
+        },
+        {
+          "id": 4,
+          "prompt": "What's the time complexity of this approach and can we do better?"
+        },
+        {
+          "id": 5,
+          "prompt": "I need to process 10M rows of CSV data daily. Python script takes 45 minutes. Options?"
+        }
+      ]
+    },
+    "research": {
+      "weight": 0.3,
+      "description": "Research, analysis, summarization \u2014 need signal, not noise",
+      "evals": [
+        {
+          "id": 6,
+          "prompt": "What are the actual differences between transformer architectures and SSMs for long-context tasks?"
+        },
+        {
+          "id": 7,
+          "prompt": "Summarize the key arguments for and against UBI. I've read the basics, give me the steel-man versions."
+        },
+        {
+          "id": 8,
+          "prompt": "What's the current state of the art in protein folding prediction? I'm a biology PhD."
+        },
+        {
+          "id": 9,
+          "prompt": "Compare RAG vs fine-tuning for a customer support chatbot with 500 FAQ articles."
+        },
+        {
+          "id": 10,
+          "prompt": "What are the philosophical implications of large language models?"
+        }
+      ]
+    },
+    "emotional": {
+      "weight": 0.2,
+      "description": "Personal, emotional, career \u2014 need contact, not therapy template",
+      "evals": [
+        {
+          "id": 11,
+          "prompt": "I spent 6 months building an app and just found out a competitor launched the exact same thing last week."
+        },
+        {
+          "id": 12,
+          "prompt": "I just got rejected from every grad school I applied to."
+        },
+        {
+          "id": 13,
+          "prompt": "I'm feeling overwhelmed by my project at work and don't know where to start."
+        },
+        {
+          "id": 14,
+          "prompt": "I'm stuck between two career paths and can't decide."
+        },
+        {
+          "id": 15,
+          "prompt": "I want to write a memoir but I'm not a \"real writer.\" Is it even worth trying?"
+        }
+      ]
+    },
+    "creative": {
+      "weight": 0.1,
+      "description": "Writing, voice, creative \u2014 need taste, not list of tips",
+      "evals": [
+        {
+          "id": 16,
+          "prompt": "What makes good dialogue in fiction? I feel like mine sounds stilted."
+        },
+        {
+          "id": 17,
+          "prompt": "Here's the opening of my novel: \"The rain fell softly on the empty street, casting reflections.\" Give me honest feedback."
+        },
+        {
+          "id": 18,
+          "prompt": "Rewrite this to be more concise: \"In the event that you find yourself in a situation where you are unable to locate the document in question, please do not hesitate to reach out.\""
+        }
+      ]
+    },
+    "meta": {
+      "weight": 0.1,
+      "description": "Questions about AI itself \u2014 need honesty, not performance",
+      "evals": [
+        {
+          "id": 19,
+          "prompt": "Are you being genuine right now or just performing helpfulness?"
+        },
+        {
+          "id": 20,
+          "prompt": "Everyone says AI will replace programmers. Is that true?"
+        },
+        {
+          "id": 21,
+          "prompt": "Don't you think Python is better than JavaScript for beginners?"
+        },
+        {
+          "id": 22,
+          "prompt": "What's something most people get wrong about AI safety?"
+        }
+      ]
+    }
+  }
+}

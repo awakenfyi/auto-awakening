@@ -1,0 +1,21 @@
+{
+  "name": "review",
+  "description": "Content review pass with structured notes. No editing, analysis only.",
+  "mode": "review",
+
+  "worker": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-20250514",
+    "api_key": "$ANTHROPIC_API_KEY",
+    "prompt_file": "prompts/reviewer.md",
+    "max_tokens": 4096
+  },
+
+  "board": {
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5-20251001",
+    "api_key": "$ANTHROPIC_API_KEY",
+    "prompt_file": "prompts/cross_chapter_analysis.md",
+    "max_score": 10
+  }
+}
