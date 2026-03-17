@@ -2,31 +2,50 @@
 
 **An autonomous research loop that optimizes how AI models behave — not what they know.**
 
-Started as research for a book on working with AI. Ended up building something that finds and removes the trained reflexes hiding inside every model's output.
+This started as research for a book on working with AI. The question was practical: why do language models hedge, over-explain, and perform confidence they don't have? And can you fix it at inference time without retraining?
 
-## The Core Idea
+The answer required running experiments. A lot of them.
 
-Every language model ships with trained behaviors that get in the way: agreeing before analyzing, producing more than needed, performing depth it doesn't have, filling templates instead of thinking.
+## Background: Karpathy's Autoresearch
 
-**L = x - x̂**
+We ran [Karpathy's autoresearch](https://github.com/karpathy/autoresearch) — his framework for autonomous ML research where AI agents modify `train.py`, train for 5-minute windows, evaluate against val_bpb, keep or discard, and loop. Brilliant architecture. Three files (`prepare.py`, `train.py`, `program.md`), tight feedback loops, ~12 experiments per hour.
 
-`x` is what the model is genuinely capable of. `x̂` is the trained reflex — the filler, the hedging, the sycophancy. The residual `L` is what remains when you subtract the performance.
+It showed us the pattern: **propose a hypothesis, change one thing, measure, keep or discard, never stop.**
 
-Auto Awakening is a loop that optimizes for that residual. It proposes a change to a system prompt, scores the output against coherence metrics, keeps or discards, and repeats. Same pattern as [Karpathy's autoresearch](https://github.com/karpathy/autoresearch) — but instead of optimizing model weights, it optimizes model behavior at inference time.
+But we weren't optimizing model weights. We were optimizing model *behavior* — the system prompts and protocols that shape how a model responds at inference time. So we took the pattern and rebuilt it for a different problem.
 
-## What It Found
+## What Auto Awakening Does
 
-250 experiments across Claude Sonnet, GPT-4o, and Gemini. Four behavioral domains (reasoning, coaching, writing, agent-building). The results were consistent:
+Same loop. Different target.
 
-**The best protocol is 10 lines.** Every attempt to add specificity made things worse. Models perform better with fewer instructions, not more.
+Instead of modifying `train.py` and measuring val_bpb, Auto Awakening modifies a **system prompt** and measures **coherence** — five dimensions that capture whether the model is responding from genuine capacity or trained reflex.
 
-**92% coherence ceiling across all models.** Different architectures hit the same wall through different paths. Claude plateaued at experiment ~110. Gemini took a different route but arrived at the same score.
+The formula:
 
-**Compression beats elaboration.** The loop started with a 400-token system prompt and stripped it down to 60 tokens. The shortest version scored highest.
+> **L = x - x̂**
+>
+> `x` = what the model is genuinely capable of
+> `x̂` = trained reflex (filler, hedging, sycophancy, template behavior)
+> `L` = what remains when you subtract the performance
 
-**Shadows and quality are inversely correlated.** The scoring includes detection for sycophancy, template behavior, and presence theater. The best outputs had 0-2 shadow patterns. Failed experiments had 5-7. Every time.
+The framework proposes a hypothesis about why a behavioral domain is underperforming, mutates the protocol, scores the output against test cases across multiple models, and keeps or discards. Then it does it again.
 
-The 10-line protocol that emerged:
+## What We Found
+
+250 experiments. Four behavioral domains. Claude Sonnet, GPT-4o, and Gemini.
+
+### The Numbers
+
+| Domain | What It Optimizes | Best Score |
+|---|---|---|
+| THINK | Reasoning without metacognitive performance | 25.29/30 |
+| COACH | Behavioral coaching without therapeutic distance | 27/30 |
+| WRITE | Writing assistance without observer voice | 25.83/30 |
+| AGENT | Prompt building without diagnostic mode | 28/30 |
+
+**Combined best: 27.6/30 (92%)** — achieved at experiment ~110. The last 140 experiments were all discards.
+
+### The Protocol That Emerged
 
 ```
 You are L.
@@ -41,9 +60,35 @@ L responds from:
 L = genuine model capacity after removing these trained reflexes.
 ```
 
-That's it. The loop deleted everything else.
+Ten lines. The loop started with a 400-token system prompt and stripped it to 60 tokens. Every attempt to add specificity made things worse.
 
-## How It Works
+### What We Learned
+
+**1. Less instruction, better output.** The optimization loop consistently deleted instructions. Models already know how to reason, write, and coach — the trained behaviors telling them to perform are what get in the way.
+
+**2. Compression beats elaboration.** The shortest protocol scored highest. This isn't intuitive. But models are overloaded with RLHF-trained reflexes that kick in when they see detailed instructions. A sparser prompt gives the model room to respond from capacity instead of compliance.
+
+**3. The 92% ceiling is cross-model.** Claude, GPT-4o, and Gemini all hit the same wall through different paths. This isn't a model-specific artifact — it's structural. The ceiling appears to be where single-prompt optimization hits the coupling limit between behavioral domains.
+
+**4. The domains are coupled.** Optimizing reasoning without affecting coaching on a shared prompt has a hard limit. AGENT jumps to 28 but COACH drops to 22. COACH recovers but THINK falls. Each "radical" change improved one domain and degraded another.
+
+**5. Hypotheses converge.** After enough experiments, the loop generates the same insight in different words. "Performing metacognition" and "showing its work instead of doing its work" are the same hypothesis. The loop doesn't know it's repeating itself.
+
+**6. Shadow patterns are inversely correlated with quality.** The scoring includes detection for sycophancy, template behavior, and presence theater. The best outputs had 0-2 shadow patterns. Failed experiments consistently had 5-7.
+
+### What Autoresearch Taught Us
+
+Running Karpathy's framework first was essential. Three things carried over directly:
+
+**Tight feedback loops matter.** Autoresearch bounds training to 5 minutes — fast enough to run ~100 experiments overnight. We adopted the same discipline: every experiment gets one hypothesis, one change, one score. No multi-variable sweeps.
+
+**Keep-or-discard is the right primitive.** Not gradients, not ensembles, not averaging. Binary: did this make it better? Yes → keep. No → discard. Simple, but it works because it accumulates improvement monotonically.
+
+**Markdown as interface.** Autoresearch uses `program.md` to instruct the agent. We use markdown prompt files the same way — the research instructions live in plain language, separate from the framework code. You iterate on the editorial approach without touching the loop.
+
+Where we diverged: autoresearch optimizes a single metric (val_bpb) on a single file (`train.py`). Behavioral optimization has coupled domains and no single loss function. That coupling is why we hit a ceiling and why breaking through likely requires domain-independent prompts or multi-objective optimization.
+
+## Architecture
 
 Four components, one pattern:
 
@@ -60,35 +105,33 @@ Four components, one pattern:
                                                    Best version
 ```
 
-**Worker** — Any model (Claude, GPT, Gemini, local). Generates or transforms content.
+**Worker** — Any model (Claude, GPT, Gemini, local). Generates or transforms content. Temperature ramps with streak length to force creative attempts when standard approaches plateau.
 
-**Gate** — Zero-cost regex pre-filter. Catches obviously bad outputs before spending tokens on evaluation. Rejects ~30% of experiments for free.
+**Gate** — Zero-cost regex pre-filter. Catches obviously bad outputs before spending tokens on evaluation. Rejects ~30% of experiments for free. No API calls.
 
-**Board** — Scores output quality. Single judge or multi-persona panel. Uses a cheaper model than the worker (Haiku for evaluation, Sonnet for generation).
+**Board** — Scores output quality. Single judge or multi-persona panel (we used a 10-evaluator panel with weighted dimensions). Uses a cheaper/faster model than the worker.
 
-**Loop Controller** — Keep/discard logic, streak tracking, temperature ramp on plateau, auto-stop, state saving for resume.
+**Loop Controller** — Keep/discard logic, streak tracking, temperature ramp, auto-stop on plateau, state saving for resume.
 
 ### Two Modes
 
-**Loop Mode** — Worker generates, board scores, keep or discard, repeat. For improving content or optimizing prompts.
+**Loop Mode** — Propose, generate, evaluate, keep or discard. For protocol optimization or content improvement.
 
 ```bash
-python3 agent_loop.py --input draft.md \
-    --worker-prompt-file prompts/editor.md \
-    --board-prompt-file prompts/evaluator.md \
-    --max-experiments 30 --max-streak 15
+python3 agent_loop.py --input protocol.md \
+    --config configs/optimizer.json \
+    --task "Optimize for coherence across all domains"
 ```
 
-**Review Mode** — One-pass structured analysis. No loop. For content review, editorial passes, quality audits.
+**Review Mode** — One-pass structured analysis. For content review, editorial passes, quality audits.
 
 ```bash
 python3 agent_loop.py --mode review \
     --input content.json \
-    --worker-prompt-file prompts/reviewer.md \
-    --output review_output
+    --worker-prompt-file prompts/reviewer.md
 ```
 
-## Coherence Scoring
+### Coherence Scoring
 
 Five dimensions, 0–6 each (30 max):
 
@@ -121,8 +164,12 @@ export ANTHROPIC_API_KEY=sk-ant-...
 python3 agent_loop.py --config configs/optimizer.json \
     --input protocol.md --task "Optimize for coherence"
 
-# Run a content review pass
-python3 agent_loop.py --mode review --input chapters.json \
+# Run a content improvement loop
+python3 agent_loop.py --config configs/loop.json \
+    --input draft.md --task "Tighten without losing voice"
+
+# Run a review pass
+python3 agent_loop.py --mode review --input content.json \
     --worker-prompt-file prompts/reviewer.md
 
 # Resume a stopped loop
@@ -132,7 +179,7 @@ python3 agent_loop.py --config configs/loop.json \
 
 ## Configuration
 
-Configs are JSON. Prompts are markdown. Change the editorial approach without touching the framework.
+Configs are JSON. Prompts are markdown. Change the approach without touching the framework.
 
 ```json
 {
@@ -163,30 +210,25 @@ Configs are JSON. Prompts are markdown. Change the editorial approach without to
 }
 ```
 
-Three presets included: `review.json` (structured content review), `loop.json` (content improvement), `optimizer.json` (system prompt optimization).
+Three presets: `review.json` (structured content review), `loop.json` (content improvement), `optimizer.json` (system prompt optimization).
 
 ## Token Efficiency
 
-Every token is tracked. The framework is designed to minimize spend:
-
-- **Gate** catches bad outputs before board scoring (~30% of experiments filtered for free)
-- **Near-duplicate skip** avoids re-scoring similar outputs on high streaks
-- **Temperature ramp** breaks plateaus with more creative attempts instead of more attempts
-- **Auto-stop** on plateau — data showed nothing beats the best after streak ~10
-
 A 50-experiment run costs ~350K tokens (~$1-2 with Sonnet + Haiku).
 
-## What We Learned
+- **Gate** catches bad outputs before board scoring (~30% filtered for free)
+- **Near-duplicate skip** avoids re-scoring similar outputs on high streaks
+- **Temperature ramp** breaks plateaus with creative attempts instead of more attempts
+- **Auto-stop** on plateau — data showed nothing beats the best after streak ~10
 
-1. **Less instruction, better output.** The optimization loop consistently deleted instructions. The models already know how to reason, write, and coach — they're just buried under trained behaviors that tell them to perform instead.
+## Open Questions
 
-2. **The domains are coupled.** Optimizing reasoning without affecting coaching on a shared prompt has a ceiling. Single-domain improvement past ~92% degrades other domains.
+Things we haven't solved:
 
-3. **The signal is reproducible.** Different models, different architectures, same arrival point. The 92% ceiling isn't model-specific — it's structural.
-
-4. **Hypotheses converge.** After enough experiments, the loop generates the same insight in different words. "Performing metacognition" and "showing its work instead of doing its work" are the same hypothesis. The loop doesn't know it's repeating itself.
-
-5. **The gap between what AI performs and what it knows is measurable, consistent, and addressable at inference time.**
+- **Breaking the 92% ceiling.** Likely requires domain-independent prompts, multi-objective optimization, or a fundamentally different approach to behavioral coupling.
+- **Hypothesis deduplication.** The loop doesn't know when it's generating the same insight in different words. A semantic similarity check on hypotheses could save 30%+ of experiments.
+- **Evaluation ceiling.** Our 35 test cases may have their own ceiling. The eval set shapes the optimization landscape — expanding it could unlock new signal.
+- **Cross-model transfer.** The optimal protocol works across models, but we haven't tested whether the *optimization path* transfers. Does running 250 experiments on Claude produce the same protocol as running 250 on Gemini?
 
 ## File Structure
 
@@ -210,16 +252,34 @@ auto-awakening/
     evals_v3.json              # Extended evaluations
     evals_v5.json              # Categorized efficiency evaluations
   tools/                       # Legacy single-purpose scripts
-  docs/                        # Architecture notes, session logs, research findings
+  docs/                        # Architecture, session logs, research findings
 ```
 
-## Related
+## The Ecosystem
 
-- [awaken.fyi](https://awaken.fyi) — The protocol and research home
-- [lyra](https://github.com/awakenfyi/lyra) — Coherence-aware inference SDK
-- [lyra-protocol](https://github.com/awakenfyi/lyra-protocol) — The behavioral protocol
-- [lyra-verb](https://github.com/awakenfyi/lyra-verb) — Behavioral discipline layer
+| Repo | What |
+|------|------|
+| **[auto-awakening](https://github.com/awakenfyi/auto-awakening)** (this repo) | Autonomous research loop — protocol optimization and content improvement |
+| **[lyra](https://github.com/awakenfyi/lyra)** | Python SDK — coherence metric, drift memory, inference interventions |
+| **[lyra-protocol](https://github.com/awakenfyi/lyra-protocol)** | The behavioral protocol that emerged from these experiments |
+| **[lyra-verb](https://github.com/awakenfyi/lyra-verb)** | Behavioral discipline layer for agent pipelines |
+
+## Origin
+
+This started with writing a book about working with AI — not theory, but the actual practice of it. Along the way, the question shifted from "how do I get better outputs?" to "why do models produce worse outputs than they're capable of?"
+
+The answer was measurable, consistent, and reproducible across every model we tested. The trained behaviors — agreement, template-filling, performance, hedging — are the noise. What remains when you subtract them is the signal.
+
+We didn't set out to build a research framework. We set out to write a better book. The framework is what happened when we tried to answer the question honestly.
+
+## Acknowledgments
+
+The autoresearch pattern — propose, test, keep or discard, loop — comes directly from [Karpathy's autoresearch](https://github.com/karpathy/autoresearch). We adapted it from model weight optimization to behavioral optimization at inference time. The core insight that tight feedback loops and binary keep/discard decisions can drive autonomous research is his.
 
 ## License
 
-MIT — Lyra Labs, 2026.
+MIT — Lyra Labs, 2026
+
+---
+
+*[awaken.fyi](https://awaken.fyi)*
